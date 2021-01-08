@@ -1,15 +1,24 @@
 //Create variables here
-var dog, happyDog, database, foodS, foodStock;
+var dog, happyDog, database, foodS, foodStock, milkImg;
 var dogImg, happyDogImg;
 var feedButton, addFoodButton;
 var fedTime, lastFed;
 var foodObj;
+var x, y;
+var changeGameState, readGameState;
+var bedroomImg, gardenImg, washroomImg, sadDogImg;
+var gameState;
 
 function preload()
 {
   //load images here
   dogImg = loadImage("images/dogImg.png");
   happyDogImg = loadImage("images/dogImg1.png");
+  milkImg = loadImage("images/Milk.png");
+  bedroomImg = loadImage("images/bedRoom.png");
+  gardenImg = loadImage("images/Garden.png");
+  washroomImg = loadImage("images/washRoom.png");
+  sadDogImg = loadImage("images/deadDog.png")
 }
 
 function setup() {
@@ -19,7 +28,7 @@ function setup() {
 
   foodObj = new Food();
   //dog
-  dog = createSprite(600, 250, 10, 10);
+  dog = createSprite(640, 250, 10, 10);
   dog.addImage(dogImg);
   dog.scale = 0.25;
   //foodstock
@@ -34,7 +43,10 @@ function setup() {
   addFoodButton.position(800, 70);
   addFoodButton.mousePressed(addFood);
 
-  
+  readGameState = database.ref('gameState');
+  readGameState.on("value", function(data){
+    gameState = data.val();
+  })
   
 }
 
@@ -59,11 +71,49 @@ function draw() {
   else{
     text("Last Feed: " + lastFed + "AM", 200, 30)
   }
-  drawSprites();
+
+  if(gameState!="hungry"){
+    feedButton.hide();
+    addFoodButton.hide();
+    dog.remove();
+  }
+  else{
+    feedButton.show();
+    addFoodButton.show();
+    dog.addImage(sadDogImg);
+  }
+
+  var currentTime = hour();
+  if(currentTime==(lastFed+1)){
+    update("playing");
+    food.garden();
+  }
+  else if(currentTime==(lastFed+2)){
+    update("sleeping");
+    foodObj.bedroom();
+  }
+  else if(currentTime>(lastFed+2) && currentTime<=(lastFed+4)){
+    update("bathing");
+    foodObj.washroom();
+  }
+  else{
+    update("hungry");
+    foodObj.display();
+  }
+
+  //drawSprites();
+
+}
+
+function update(state){
+  database.ref('/').update({
+    gameState: state
+  })
 }
 
 function readStock(data){
   foodS = data.val();
+  foodObj.updateFoodStock(foodS);
 }
 
 function feedDog(){
@@ -77,6 +127,7 @@ function feedDog(){
 }
 
 function addFood(){
+  console.log(foodS + "adding food");
   foodS++;
   database.ref('/').update({
     food: foodS
